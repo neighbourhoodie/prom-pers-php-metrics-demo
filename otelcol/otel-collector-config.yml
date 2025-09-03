@@ -1,0 +1,40 @@
+# https://opentelemetry.io/docs/collector/configuration/
+# Collector listens on 4318 for OTLP (PHP app sends here)
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+# https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/redactionprocessor
+processors:
+  redaction:
+    # allow_all_keys is a flag that disables the allowed_keys list when set to true.
+    # The list of blocked_values is applied regardless. If you just want to block values, set this to true.
+    allow_all_keys: true
+    # blocked_values is a list of regular expressions for blocking values of
+    # allowed span attributes. Values that match are masked
+    blocked_values:
+      - "4[0-9]{12}(?:[0-9]{3})?" ## Visa credit card number
+      - "(5[1-5][0-9]{14})"       ## MasterCard number
+    # blocked_key_patterns is a list of blocked span attribute key patterns. Span attributes
+    # matching the regexes on the list are masked.
+    blocked_key_patterns:
+      - ".*token.*"
+      - ".*api_key.*"
+      - ".*host.*"
+      - ".*port.*"
+
+# Collector exposes Prometheus metrics at 8889
+exporters:
+  prometheus:
+    endpoint: '0.0.0.0:8889'
+    namespace: default
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [redaction]
+      exporters: [prometheus]
+
